@@ -1,0 +1,71 @@
+name: Autograding Tests
+'on':
+- push
+- repository_dispatch
+permissions:
+  checks: write
+  actions: read
+  contents: read
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: T1
+      id: t1
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: T1
+        setup-command: ''
+        command: python -c "import os; assert os.path.exists('Dockerfile'), '❌ Dockerfile
+          not found!'"
+        timeout: 10
+        max-score: 1
+    - name: T2
+      id: t2
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: T2
+        setup-command: ''
+        command: docker build -t todo-app .
+        timeout: 10
+        max-score: 1
+    - name: T3
+      id: t3
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: T3
+        setup-command: ''
+        command: docker run -d -p 3000:3000 --network="host" --name app todo-app
+        timeout: 10
+        max-score: 1
+    - name: T4
+      id: t4
+      uses: classroom-resources/autograding-python-grader@v1
+      with:
+        timeout: 10
+        max-score: 4
+        setup-command: pip install -r requirements.txt
+    - name: Create Todo
+      id: create-todo
+      uses: classroom-resources/autograding-command-grader@v1
+      with:
+        test-name: Create Todo
+        setup-command: ''
+        command: 'todo_id=$(curl -X POST http://localhost:3000/todos -H "Content-Type:
+          application/json" -d ''{"task": "pytest todo"}'' | jq -r ''._id'') && echo
+          "Created Todo ID: $todo_id"'
+        timeout: 10
+        max-score: 1
+    - name: Autograding Reporter
+      uses: classroom-resources/autograding-grading-reporter@v1
+      env:
+        T1_RESULTS: "${{steps.t1.outputs.result}}"
+        T2_RESULTS: "${{steps.t2.outputs.result}}"
+        T3_RESULTS: "${{steps.t3.outputs.result}}"
+        T4_RESULTS: "${{steps.t4.outputs.result}}"
+        CREATE-TODO_RESULTS: "${{steps.create-todo.outputs.result}}"
+      with:
+        runners: t1,t2,t3,t4,create-todo
